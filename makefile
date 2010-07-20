@@ -32,7 +32,7 @@ romfs_text.o: romfs.bin
 
 %.hex: %.elf
 	$(OBJCOPY) -O ihex $< $@
-	@avr-size $<	
+	avr-size -C --mcu=$(MCU) $<	
 
 .c.o: %.h
 	$(CC) $(CCFLAGS) -MMD -mmcu=$(MCU) -c -o $@ $<
