@@ -303,7 +303,7 @@ int main()
 
 	while (1) {
 		wdt_reset();
-		httpd_loop(fs, cgi_handler);
+		httpd_loop(cgi_handler);
 	}
 
 	return 0;

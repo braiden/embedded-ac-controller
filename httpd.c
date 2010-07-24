@@ -171,7 +171,7 @@ static void _httpd_write_content_type(uint8_t sock, char *filename)
 
 #ifdef SUPPORT_MMC
 // sock buffer is pointed to start of URI, attempt to open resource using FATFS
-static void _httpd_handle_uri_mmc(uint8_t sock, uint8_t method, FATFS *fs, httpd_cgi_handler_t cgi_handler)
+static void _httpd_handle_uri_mmc(uint8_t sock, uint8_t method, httpd_cgi_handler_t cgi_handler)
 {
 	char buffer[256];
 	char c;
@@ -187,31 +187,30 @@ static void _httpd_handle_uri_mmc(uint8_t sock, uint8_t method, FATFS *fs, httpd
 	log_str(buffer);
 	log("\n");
 
-	if (fs != NULL && pf_open(buffer) == FR_OK) {
+	if (pf_open(buffer) == FR_OK) {
 		// file was openned, write headers
 		httpd_write_response(sock, HTTPD_OK);
 		_httpd_write_content_type(sock, buffer);
 		sock_write_P(sock, PSTR("\r\n"), 2);
 
+		// if request wan't head, write file contents
 		if (method != HTTPD_HEAD) {
 			WORD offset = 0;
 			WORD read = 0;
 			do {
-				//pf_lseek(offset);
 				pf_read(buffer, 255, &read);
 				sock_write(sock, buffer, read);
 				offset += 255;
 			} while (read == 255);
 		}
 	} else {
-		log("pf_open FAILED\n");
 		httpd_write_response(sock, HTTPD_NOTFOUND);
 	}
 }
 #endif
 
 // sock buffer is pointed to start of URI, attempt to open resource using PROGMEM
-static void _httpd_handle_uri(uint8_t sock, uint8_t method, FATFS *fs, httpd_cgi_handler_t cgi_handler)
+static void _httpd_handle_uri(uint8_t sock, uint8_t method, httpd_cgi_handler_t cgi_handler)
 {
 	uint8_t status;
 	// open the root node of filesystem
@@ -228,7 +227,7 @@ static void _httpd_handle_uri(uint8_t sock, uint8_t method, FATFS *fs, httpd_cgi
 #ifdef SUPPORT_MMC
 			// speial link jumping uri to mmc
 			} else if (strcmp_P(buffer, PSTR("mmc")) == 0) {
-				_httpd_handle_uri_mmc(sock, method, fs, cgi_handler);
+				_httpd_handle_uri_mmc(sock, method, cgi_handler);
 				return;
 #endif
 			// try to open the path as a directory
@@ -303,7 +302,7 @@ static void _httpd_handle_uri(uint8_t sock, uint8_t method, FATFS *fs, httpd_cgi
 	}
 }
 
-void httpd_loop(FATFS *fs, httpd_cgi_handler_t cgi_handler)
+void httpd_loop(httpd_cgi_handler_t cgi_handler)
 {
 	// wait for something to happen
 	uint8_t ready = sock_select(_fdset, 0x7F);
@@ -323,7 +322,7 @@ void httpd_loop(FATFS *fs, httpd_cgi_handler_t cgi_handler)
 			uint8_t method = _httpd_read_method(fd);
 			if (method != HTTPD_INVALID_METHOD) {
 				// invoke the handler, fd's next read will read first char of url
-				_httpd_handle_uri(fd, method, fs, cgi_handler);
+				_httpd_handle_uri(fd, method, cgi_handler);
 			} else {
 				httpd_write_response(fd, HTTPD_ERR);
 			}
