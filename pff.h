@@ -28,7 +28,7 @@
 
 #define	_USE_READ	1	/* pf_read(): 0:Remove ,1:Enable */
 
-#define	_USE_DIR	0	/* pf_opendir() and pf_readdir(): 0:Remove ,1:Enable */
+#define	_USE_DIR	1	/* pf_opendir() and pf_readdir(): 0:Remove ,1:Enable */
 
 #define	_USE_LSEEK	0	/* pf_lseek(): 0:Remove ,1:Enable */
 

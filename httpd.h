@@ -2,6 +2,7 @@
 
 #include <avr/pgmspace.h>
 #include "socket.h"
+#include "pff.h"
 
 #ifndef HTTPD_PORT
 #define HTTPD_PORT 80
@@ -31,6 +32,6 @@
 typedef void (*httpd_cgi_handler_t)(uint8_t sockfd, uint8_t method, char *buffer);
 
 void httpd_init();
-void httpd_loop(httpd_cgi_handler_t cgi_handler);
+void httpd_loop(FATFS *fs, httpd_cgi_handler_t cgi_handler);
 void httpd_write_response(uint8_t sockfd, uint8_t status);
 uint8_t httpd_read_path(uint8_t sock, char *buffer);

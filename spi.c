@@ -8,12 +8,14 @@ void spi_init()
 	SPI_DDR &= ~_BV(SPI_MISO);
 	// MOSI and SCK are out
 	SPI_DDR |= _BV(SPI_MOSI) | _BV(SPI_SCK);
-	// Enable SPI Master, MSB, SCK = F_CPU / 2
+	// Enable SPI Master, MSB, lowest clock speed (F_CPU / 128)
+	// should be 100 - 400khz for initial mmc initialization
 	SPCR |= _BV(SPE) | _BV(MSTR) | _BV(SPR1) | _BV(SPR0);
 }
 
 void spi_fullspeed()
 {
+	// SPI clock to F_CPU / 2
 	SPSR |= _BV(SPI2X);
 	SPCR &= ~(_BV(SPR1) | _BV(SPR0));
 	SPCR |= _BV(SPE) | _BV(MSTR);

@@ -2,13 +2,14 @@
 /* PFF - Low level disk control module for ATtiny85     (C)ChaN, 2009    */
 /*-----------------------------------------------------------------------*/
 
-#define _WRITE_FUNC	1
+#define _WRITE_FUNC	0
 
 #include <avr/io.h>
 #include "diskio.h"
 #include "spi.h"
 #include "debug.h"
 
+#ifdef SUPPORT_MMC
 
 /* Definitions for MMC/SDC command */
 #define CMD0	(0x40+0)	/* GO_IDLE_STATE */
@@ -251,4 +252,6 @@ DRESULT disk_writep (
 
 	return res;
 }
+#endif
+
 #endif

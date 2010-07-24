@@ -6,6 +6,7 @@
 #include "w5100.h"
 #include "romfs.h"
 #include "debug.h"
+#include "pff.h"
 
 uint8_t _listen_sock;
 uint8_t _clients[HTTPD_MAX_CLIENTS];
@@ -139,6 +140,9 @@ static void _httpd_write_content_type(uint8_t sock, char *filename)
 		// assumit it is .html
 		type = PSTR("text/html");
 	} else {
+		// FIXME, need to position after last '.'
+		//        otherwise mmc fails to get mime type
+		//        when . in path.
 		// position pointer at first char after .
 		while (*filename && *filename++ != '.');
 
@@ -163,7 +167,34 @@ static void _httpd_write_content_type(uint8_t sock, char *filename)
 	sock_write_P(sock, PSTR("\r\n"), 2);
 }
 
-static void _httpd_handle_uri(uint8_t sock, uint8_t method, httpd_cgi_handler_t cgi_handler)
+#ifdef SUPPORT_MMC
+// sock buffer is pointed to start of URI, attempt to open resource using FATFS
+static void _httpd_handle_uri_mmc(uint8_t sock, uint8_t method, FATFS *fs, httpd_cgi_handler_t cgi_handler)
+{
+	char uri[256];
+	char c;
+	char *ptr;
+	uint8_t len = 255;
+
+	while (sock_read(sock, &c, 1)
+			&& c != ' ' && c != '\n' && c != '\r' && c != '?'
+			&& len--) {
+		*ptr++ = c;
+	}
+	*ptr = 0;
+	log_str(uri);
+
+	if (fs != NULL) {
+		// try open file, and send output
+
+	} else {
+		httpd_write_response(sock, HTTPD_NOTFOUND);
+	}
+}
+#endif
+
+// sock buffer is pointed to start of URI, attempt to open resource using PROGMEM
+static void _httpd_handle_uri(uint8_t sock, uint8_t method, FATFS *fs, httpd_cgi_handler_t cgi_handler)
 {
 	uint8_t status;
 	// open the root node of filesystem
@@ -177,6 +208,11 @@ static void _httpd_handle_uri(uint8_t sock, uint8_t method, httpd_cgi_handler_t 
 			if (strcmp_P(buffer, PSTR("cgi-bin")) == 0) {
 				(*cgi_handler)(sock, method, buffer);
 				return;
+#ifdef SUPPORT_MMC
+			// speial link jumping uri to mmc
+			} else if (strcmp_P(buffer, PSTR("mmc")) == 0) {
+				_httpd_handle_uri_mmc(sock, method, fs, cgi_handler);
+#endif
 			// try to open the path as a directory
 			} else if (romfs_open(&dirnode, &filenode, buffer)) {
 				if (!ROMFS_IS_DIRECTORY(filenode)) {
@@ -249,7 +285,7 @@ static void _httpd_handle_uri(uint8_t sock, uint8_t method, httpd_cgi_handler_t 
 	}
 }
 
-void httpd_loop(httpd_cgi_handler_t cgi_handler)
+void httpd_loop(FATFS *fs, httpd_cgi_handler_t cgi_handler)
 {
 	// wait for something to happen
 	uint8_t ready = sock_select(_fdset, 0x7F);
@@ -269,7 +305,7 @@ void httpd_loop(httpd_cgi_handler_t cgi_handler)
 			uint8_t method = _httpd_read_method(fd);
 			if (method != HTTPD_INVALID_METHOD) {
 				// invoke the handler, fd's next read will read first char of url
-				_httpd_handle_uri(fd, method, cgi_handler);
+				_httpd_handle_uri(fd, method, fs, cgi_handler);
 			} else {
 				httpd_write_response(fd, HTTPD_ERR);
 			}
