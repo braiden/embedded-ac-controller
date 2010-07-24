@@ -7,6 +7,7 @@
 #include <avr/io.h>
 #include "diskio.h"
 #include "spi.h"
+#include "debug.h"
 
 
 /* Definitions for MMC/SDC command */
@@ -21,9 +22,9 @@
 #define CMD58	(0x40+58)	/* READ_OCR */
 
 /* Port Controls (Platform dependent) */
-#define SELECT()	PORTB &= ~0x08		/* MMC CS = L */
-#define	DESELECT()	PORTB |=  0x08		/* MMC CS = H */
-#define	MMC_SEL		!(PORTB &  0x08)	/* MMC CS status (true:selected) */
+#define SELECT()	PORTD &= ~_BV(PIN3)		/* MMC CS = L */
+#define	DESELECT()	PORTD |=  _BV(PIN3)		/* MMC CS = H */
+#define	MMC_SEL		!(PORTD &  _BV(PIN3))	/* MMC CS status (true:selected) */
 
 /*--------------------------------------------------------------------------
 
@@ -84,7 +85,7 @@ BYTE send_cmd (
 	spi_write_byte(n);
 
 	/* Receive a command response */
-	n = 10;								/* Wait for a valid response in timeout of 10 attempts */
+	n = 200;								/* Wait for a valid response in timeout of 10 attempts */
 	do {
 		res = spi_read_byte();
 	} while ((res & 0x80) && --n);
@@ -110,16 +111,14 @@ DSTATUS disk_initialize (void)
 	BYTE n, cmd, ty, ocr[4];
 	WORD tmr;
 
-
-	//INIT_SPI(); TODO
-
 #if _WRITE_FUNC
 	if (MMC_SEL) disk_writep(0, 0);		/* Finalize write process if it is in progress */
 #endif
 	for (n = 100; n; n--) spi_read_byte();	/* Dummy clocks */
 
 	ty = 0;
-	if (send_cmd(CMD0, 0) == 1) {			/* Enter Idle state */
+	uint8_t result;
+	if ((result = send_cmd(CMD0, 0)) == 1) {			/* Enter Idle state */
 		if (send_cmd(CMD8, 0x1AA) == 1) {	/* SDv2 */
 			for (n = 0; n < 4; n++) ocr[n] = spi_read_byte();		/* Get trailing return value of R7 resp */
 			if (ocr[2] == 0x01 && ocr[3] == 0xAA) {				/* The card can work at vdd range of 2.7-3.6V */
@@ -139,6 +138,10 @@ DSTATUS disk_initialize (void)
 			if (!tmr || send_cmd(CMD16, 512) != 0)			/* Set R/W block length to 512 */
 				ty = 0;
 		}
+	} else {
+		log("send_cmd(CMD0) FAILED = ");
+		log_uint8(result);
+		log("\n");
 	}
 	CardType = ty;
 	release_spi();

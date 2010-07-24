@@ -12,6 +12,9 @@
 #include "socket.h"
 #include "mcp9800.h"
 #include "debug.h"
+#include "diskio.h"
+#include "spi.h"
+#include "pff.h"
 
 #define TEMP 1
 #define FAN 2
@@ -235,9 +238,28 @@ OK:
 
 int main()
 {
+	FATFS fs;
+
 	wdt_enable(WDTO_8S);
 	uart_init();
 	lg_init();
+	spi_init();
+
+	//enable cd card CS
+	DDRD |= _BV(PIN3);
+	PORTD |= _BV(PIN3);
+	// try to init micro SD
+	if (disk_initialize() != STA_NOINIT) {
+		// once initial inti is done enable full speed SPI
+		spi_fullspeed();
+		if(pf_mount(&fs) == FR_OK) {
+			// TODO
+		} else {
+			log("pf_mount FAILED\n");
+		}
+	} else {
+		log("disk_init FAILED\n");
+	}
 	w5100_init(&W5100_CONFIG);
 	httpd_init();
 #ifdef SUPPORT_MCP9800

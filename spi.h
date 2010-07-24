@@ -21,7 +21,8 @@
 #define SPI_PERIOD_US 0
 #endif
 
-#define spi_read_byte() spi_write_byte(0x00)
+#define spi_read_byte() spi_write_byte(0xFF)
 
 void spi_init();
+void spi_fullspeed();
 uint8_t spi_write_byte(uint8_t data);
