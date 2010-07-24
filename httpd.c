@@ -197,7 +197,7 @@ static void _httpd_handle_uri_mmc(uint8_t sock, uint8_t method, FATFS *fs, httpd
 			WORD offset = 0;
 			WORD read = 0;
 			do {
-				pf_lseek(offset);
+				//pf_lseek(offset);
 				pf_read(buffer, 255, &read);
 				sock_write(sock, buffer, read);
 				offset += 255;

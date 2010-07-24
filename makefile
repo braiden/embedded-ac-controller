@@ -1,6 +1,7 @@
 CC=avr-gcc
 LD=avr-ld
 CCFLAGS=-Wall -Os -mcall-prologues -DF_CPU=16000000UL -DSOCK_NO_CLIENT -DSUPPORT_MCP9800 -DSUPPORT_MMC -DDEBUG
+#CCFLAGS=-Wall -Os -mcall-prologues -DF_CPU=16000000UL -DSOCK_NO_CLIENT 
 OBJCOPY=avr-objcopy
 MCU=atmega328p
 #MCU=atmega88p
