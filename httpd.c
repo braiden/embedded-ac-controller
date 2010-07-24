@@ -148,6 +148,8 @@ static void _httpd_write_content_type(uint8_t sock, char *filename)
 
 		if (strcmp_P(filename, PSTR("html")) == 0) {
 			type = PSTR("text/html");
+		} else if (strcmp_P(filename, PSTR("htm")) == 0) {
+			type = PSTR("text/html");
 		} else if (strcmp_P(filename, PSTR("txt")) == 0) {
 			type = PSTR("text/plain");
 		} else if (strcmp_P(filename, PSTR("jpg")) == 0) {
@@ -171,9 +173,9 @@ static void _httpd_write_content_type(uint8_t sock, char *filename)
 // sock buffer is pointed to start of URI, attempt to open resource using FATFS
 static void _httpd_handle_uri_mmc(uint8_t sock, uint8_t method, FATFS *fs, httpd_cgi_handler_t cgi_handler)
 {
-	char uri[256];
+	char buffer[256];
 	char c;
-	char *ptr;
+	char *ptr = buffer;
 	uint8_t len = 255;
 
 	while (sock_read(sock, &c, 1)
@@ -182,12 +184,27 @@ static void _httpd_handle_uri_mmc(uint8_t sock, uint8_t method, FATFS *fs, httpd
 		*ptr++ = c;
 	}
 	*ptr = 0;
-	log_str(uri);
+	log_str(buffer);
+	log("\n");
 
-	if (fs != NULL) {
-		// try open file, and send output
+	if (fs != NULL && pf_open(buffer) == FR_OK) {
+		// file was openned, write headers
+		httpd_write_response(sock, HTTPD_OK);
+		_httpd_write_content_type(sock, buffer);
+		sock_write_P(sock, PSTR("\r\n"), 2);
 
+		if (method != HTTPD_HEAD) {
+			WORD offset = 0;
+			WORD read = 0;
+			do {
+				pf_lseek(offset);
+				pf_read(buffer, 255, &read);
+				sock_write(sock, buffer, read);
+				offset += 255;
+			} while (read == 255);
+		}
 	} else {
+		log("pf_open FAILED\n");
 		httpd_write_response(sock, HTTPD_NOTFOUND);
 	}
 }
@@ -212,6 +229,7 @@ static void _httpd_handle_uri(uint8_t sock, uint8_t method, FATFS *fs, httpd_cgi
 			// speial link jumping uri to mmc
 			} else if (strcmp_P(buffer, PSTR("mmc")) == 0) {
 				_httpd_handle_uri_mmc(sock, method, fs, cgi_handler);
+				return;
 #endif
 			// try to open the path as a directory
 			} else if (romfs_open(&dirnode, &filenode, buffer)) {

@@ -241,9 +241,12 @@ int main()
 	FATFS *fs = NULL;
 
 	wdt_enable(WDTO_8S);
+	_delay_ms(2);
+
 	uart_init();
 	lg_init();
 	spi_init();
+	w5100_init(&W5100_CONFIG);
 
 	//enable cd card CS
 	DDRD |= _BV(PIN3);
@@ -253,7 +256,7 @@ int main()
 	// try to init micro SD
 	if (disk_initialize() != STA_NOINIT) {
 		// once initial inti is done enable full speed SPI
-		if(pf_mount(&tmp) != FR_OK) {
+		if(pf_mount(&tmp) == FR_OK) {
 			fs = &tmp;
 		} else {
 			log("pf_mount FAILED\n");
@@ -264,7 +267,6 @@ int main()
 #endif
 	spi_fullspeed();
 
-	w5100_init(&W5100_CONFIG);
 	httpd_init();
 #ifdef SUPPORT_MCP9800
 	mcp9800_init();
