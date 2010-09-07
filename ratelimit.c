@@ -47,9 +47,9 @@ void ratelimit_init()
 	ICR1L = (uint8_t)(F_CPU / 1024 * TIMER_OVF_SECONDS);
 }
 
-uint8_t ratelimit()
+uint8_t ratelimit(uint8_t rate_limit)
 {
-	if (count >= RATE_LIMIT) {
+	if (count >= rate_limit && rate_limit != 0) {
 		return 0;
 	} else {
 		count++;
@@ -62,7 +62,7 @@ ISR(TIMER1_OVF_vect)
 {
 	static uint8_t seconds = 0;
 	
-	if (seconds % 10 == 0) {
+	if (count > 0 && seconds % 10 == 0) {
 		log("TIMER_OVF_vect(): tick=");
 		log_int(seconds, 1, 10);
 		log("/" STRINGIFY(RATE_LIMIT_PRESCALAR) "\n");
@@ -72,7 +72,7 @@ ISR(TIMER1_OVF_vect)
 		seconds = 0;
 		count = 0;
 		log("TIMER1_OVF_vect(): Reset Rate Counter.\n");
-	} else {
+	} else if (count > 0) {
 		seconds++;
 	}
 }

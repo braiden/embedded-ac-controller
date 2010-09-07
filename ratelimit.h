@@ -32,9 +32,6 @@
 // numver of ticks before the ISR
 // resets the rate limit.
 #define RATE_LIMIT_PRESCALAR 240
-// the number of times ratelimit()
-// can be called per SECONDS * PRESCALAR seconds
-#define RATE_LIMIT 20
 
 // make sure that requests timer TOP fits in 16 bit.
 #if (F_CPU / 1024 * TIMER_OVF_SECONDS) > 0xFFFF
@@ -43,5 +40,4 @@
 
 #define PERIOD_SECONDS 150
 void ratelimit_init();
-uint8_t ratelimit();
-
+uint8_t ratelimit(uint8_t limit);

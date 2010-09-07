@@ -43,6 +43,9 @@
 #include "pff.h"
 #include "ratelimit.h"
 
+#define RATE_LIMIT_DEFAULT 20
+#define RATE_LIMIT_POWER 3
+
 #define TEMP 1
 #define FAN 2
 #define ERR_RATE_TOO_FAST 2
@@ -125,7 +128,7 @@ uint8_t do_raw_cmd(uint8_t sock, uint8_t status, char *buffer, uint8_t add_len_a
 #endif
 
 	// send the op code
-	if (ratelimit()) {
+	if (ratelimit(RATE_LIMIT_DEFAULT)) {
 		lg_send(opcode);
 		return 1;
 	} else {
@@ -183,7 +186,7 @@ uint8_t do_on_cmd(uint8_t sock, uint8_t status, char *buffer)
 	log("\n");
 #endif
 	
-	if (ratelimit()) {
+	if (ratelimit(RATE_LIMIT_DEFAULT)) {
 		lg_send(cmd);
 		return 1;
 	} else {
@@ -191,9 +194,9 @@ uint8_t do_on_cmd(uint8_t sock, uint8_t status, char *buffer)
 	}
 }
 
-uint8_t ratelimit_lg_cmd(uint8_t cmd)
+uint8_t ratelimit_lg_cmd(uint8_t cmd, uint8_t limit)
 {
-	if (ratelimit()) {
+	if (ratelimit(limit)) {
 		lg_cmd(cmd);
 		return 0;
 	} else {
@@ -211,21 +214,21 @@ void cgi_handler(uint8_t sock, uint8_t method, char *buffer)
 		if (status == HTTPD_READ_DONE || status == HTTPD_READ_QUERY_STRING) {
 			// found a 'file', map to command
 			if (strcmp_P(buffer, PSTR("power")) == 0) {
-				status = ratelimit_lg_cmd(LG_CMD_POWER);
+				status = ratelimit_lg_cmd(LG_CMD_POWER, RATE_LIMIT_POWER);
 			} else if (strcmp_P(buffer, PSTR("temp-down")) == 0) {
-				status = ratelimit_lg_cmd(LG_CMD_TEMP_DOWN);
+				status = ratelimit_lg_cmd(LG_CMD_TEMP_DOWN, RATE_LIMIT_DEFAULT);
 			} else if (strcmp_P(buffer, PSTR("temp-up")) == 0) {
-				status = ratelimit_lg_cmd(LG_CMD_TEMP_UP);
+				status = ratelimit_lg_cmd(LG_CMD_TEMP_UP, RATE_LIMIT_DEFAULT);
 			} else if (strcmp_P(buffer, PSTR("energy")) == 0) {
-				status = ratelimit_lg_cmd(LG_CMD_ENERGY_SAVE);
+				status = ratelimit_lg_cmd(LG_CMD_ENERGY_SAVE, RATE_LIMIT_DEFAULT);
 			} else if (strcmp_P(buffer, PSTR("mode")) == 0) {
-				status = ratelimit_lg_cmd(LG_CMD_MODE);
+				status = ratelimit_lg_cmd(LG_CMD_MODE, RATE_LIMIT_DEFAULT);
 			} else if (strcmp_P(buffer, PSTR("timer")) == 0) {
-				status = ratelimit_lg_cmd(LG_CMD_TIMER);
+				status = ratelimit_lg_cmd(LG_CMD_TIMER, RATE_LIMIT_DEFAULT);
 			} else if (strcmp_P(buffer, PSTR("speed")) == 0) {
-				status = ratelimit_lg_cmd(LG_CMD_FAN_SPEED);
+				status = ratelimit_lg_cmd(LG_CMD_FAN_SPEED, RATE_LIMIT_DEFAULT);
 			} else if (strcmp_P(buffer, PSTR("off")) == 0) {
-				status = ratelimit_lg_cmd(LG_CMD_POWER_OFF);
+				status = ratelimit_lg_cmd(LG_CMD_POWER_OFF, RATE_LIMIT_DEFAULT);
 			} else if (strcmp_P(buffer, PSTR("on")) == 0) {
 				// parse the 'on' command
 				if((status = do_on_cmd(sock, status, buffer)) == 0) {
