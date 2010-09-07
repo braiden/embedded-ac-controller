@@ -41,9 +41,11 @@
 #include "diskio.h"
 #include "spi.h"
 #include "pff.h"
+#include "ratelimit.h"
 
 #define TEMP 1
 #define FAN 2
+#define ERR_RATE_TOO_FAST 2
 
 w5100_config_t W5100_CONFIG PROGMEM = {
 	{192,168,0,1},
@@ -123,8 +125,12 @@ uint8_t do_raw_cmd(uint8_t sock, uint8_t status, char *buffer, uint8_t add_len_a
 #endif
 
 	// send the op code
-	lg_send(opcode);
-	return 1;
+	if (ratelimit()) {
+		lg_send(opcode);
+		return 1;
+	} else {
+		return ERR_RATE_TOO_FAST;
+	}
 }
 
 #endif
@@ -176,10 +182,23 @@ uint8_t do_on_cmd(uint8_t sock, uint8_t status, char *buffer)
 	}
 	log("\n");
 #endif
+	
+	if (ratelimit()) {
+		lg_send(cmd);
+		return 1;
+	} else {
+		return ERR_RATE_TOO_FAST;
+	}
+}
 
-	lg_send(cmd);
-
-	return 1;
+uint8_t ratelimit_lg_cmd(uint8_t cmd)
+{
+	if (ratelimit()) {
+		lg_cmd(cmd);
+		return 0;
+	} else {
+		return ERR_RATE_TOO_FAST;
+	}
 }
 
 void cgi_handler(uint8_t sock, uint8_t method, char *buffer)
@@ -192,24 +211,24 @@ void cgi_handler(uint8_t sock, uint8_t method, char *buffer)
 		if (status == HTTPD_READ_DONE || status == HTTPD_READ_QUERY_STRING) {
 			// found a 'file', map to command
 			if (strcmp_P(buffer, PSTR("power")) == 0) {
-				lg_cmd(LG_CMD_POWER);
+				status = ratelimit_lg_cmd(LG_CMD_POWER);
 			} else if (strcmp_P(buffer, PSTR("temp-down")) == 0) {
-				lg_cmd(LG_CMD_TEMP_DOWN);
+				status = ratelimit_lg_cmd(LG_CMD_TEMP_DOWN);
 			} else if (strcmp_P(buffer, PSTR("temp-up")) == 0) {
-				lg_cmd(LG_CMD_TEMP_UP);
+				status = ratelimit_lg_cmd(LG_CMD_TEMP_UP);
 			} else if (strcmp_P(buffer, PSTR("energy")) == 0) {
-				lg_cmd(LG_CMD_ENERGY_SAVE);
+				status = ratelimit_lg_cmd(LG_CMD_ENERGY_SAVE);
 			} else if (strcmp_P(buffer, PSTR("mode")) == 0) {
-				lg_cmd(LG_CMD_MODE);
+				status = ratelimit_lg_cmd(LG_CMD_MODE);
 			} else if (strcmp_P(buffer, PSTR("timer")) == 0) {
-				lg_cmd(LG_CMD_TIMER);
+				status = ratelimit_lg_cmd(LG_CMD_TIMER);
 			} else if (strcmp_P(buffer, PSTR("speed")) == 0) {
-				lg_cmd(LG_CMD_FAN_SPEED);
+				status = ratelimit_lg_cmd(LG_CMD_FAN_SPEED);
 			} else if (strcmp_P(buffer, PSTR("off")) == 0) {
-				lg_cmd(LG_CMD_POWER_OFF);
+				status = ratelimit_lg_cmd(LG_CMD_POWER_OFF);
 			} else if (strcmp_P(buffer, PSTR("on")) == 0) {
 				// parse the 'on' command
-				if(!do_on_cmd(sock, status, buffer)) {
+				if((status = do_on_cmd(sock, status, buffer)) == 0) {
 					goto NOTFOUND;
 				}
 #ifdef SUPPORT_RAW_CMD
@@ -225,8 +244,12 @@ void cgi_handler(uint8_t sock, uint8_t method, char *buffer)
 			} else {
 				goto NOTFOUND;
 			}
-
-			goto OK;
+			
+			if (status != ERR_RATE_TOO_FAST) {
+				goto OK;
+			} else {
+				goto ERR;
+			}
 		}
 #ifdef SUPPORT_MCP9800
 	} else if (status == HTTPD_READ_PATH && strcmp_P(buffer, PSTR("temp")) == 0) {
@@ -250,11 +273,9 @@ NOTFOUND:
 	httpd_write_response(sock, HTTPD_NOTFOUND);
 	return;
 
-#ifdef SUPPORT_RAW_CMD
 ERR:
 	httpd_write_response(sock, HTTPD_ERR);
 	return;
-#endif
 
 OK:
 	httpd_write_response(sock, HTTPD_OK);
@@ -273,6 +294,7 @@ int main()
 	lg_init();
 	spi_init();
 	w5100_init(&W5100_CONFIG);
+	ratelimit_init();
 
 	//enable cd card CS
 	DDRD |= _BV(PIN3);
