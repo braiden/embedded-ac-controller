@@ -29,6 +29,9 @@
 #include "ratelimit.h"
 #include "debug.h"
 
+#define STRINGIFY2(i) #i
+#define STRINGIFY(i) STRINGIFY2(i)
+
 volatile uint8_t count = 0;
 
 // initialize the timer & PWM hardware
@@ -39,14 +42,14 @@ void ratelimit_init()
 	TCCR1B |= _BV(WGM13) | _BV(WGM12) |  _BV(CS12) | _BV(CS10);
 	// interrupt on timer overflow
 	TIMSK1 |= _BV(TOIE1);
-	// overflow once per 2 seconds
-	ICR1H = (uint8_t)((F_CPU / 1024 * 2) >> 8);
-	ICR1L = (uint8_t)(F_CPU / 1024 * 2);
+	// set the timer overflow to 1 per TIMER_OVF_SECONDS seconds
+	ICR1H = (uint8_t)((F_CPU / 1024 * TIMER_OVF_SECONDS) >> 8);
+	ICR1L = (uint8_t)(F_CPU / 1024 * TIMER_OVF_SECONDS);
 }
 
 uint8_t ratelimit()
 {
-	if (count > LIMIT_PER_PERIOD) {
+	if (count >= RATE_LIMIT) {
 		return 0;
 	} else {
 		count++;
@@ -59,9 +62,17 @@ ISR(TIMER1_OVF_vect)
 {
 	static uint8_t seconds = 0;
 	
-	if (++seconds >= PERIOD_SECONDS) {
+	if (seconds % 10 == 0) {
+		log("TIMER_OVF_vect(): tick=");
+		log_int(seconds, 1, 10);
+		log("/" STRINGIFY(RATE_LIMIT_PRESCALAR) "\n");
+	}
+
+	if (seconds >= RATE_LIMIT_PRESCALAR) {
 		seconds = 0;
 		count = 0;
 		log("TIMER1_OVF_vect(): Reset Rate Counter.\n");
+	} else {
+		seconds++;
 	}
 }

@@ -26,9 +26,22 @@
 
 #pragma once
 
-#define LIMIT_PER_PERIOD 20
-#define PERIOD_SECONDS 150
+// number of seconds beteen ISR
+// invocations, at 16mhz, 4 sec max.
+#define TIMER_OVF_SECONDS 4
+// numver of ticks before the ISR
+// resets the rate limit.
+#define RATE_LIMIT_PRESCALAR 240
+// the number of times ratelimit()
+// can be called per SECONDS * PRESCALAR seconds
+#define RATE_LIMIT 20
 
+// make sure that requests timer TOP fits in 16 bit.
+#if (F_CPU / 1024 * TIMER_OVF_SECONDS) > 0xFFFF
+#error TIMER_OVF_SECONDS rate is too high
+#endif
+
+#define PERIOD_SECONDS 150
 void ratelimit_init();
 uint8_t ratelimit();
 
