@@ -30,6 +30,8 @@
 #include <avr/pgmspace.h>
 #include "spi.h"
 
+#define W5100_TCP_RETRY_COUNT 2
+
 #ifndef W5100_PORT
 #define W5100_PORT PORTB
 #endif

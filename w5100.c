@@ -46,6 +46,8 @@ void w5100_init(PGM_VOID_P w5100_config)
 	W5100_PORT |= _BV(W5100_CS);
 	// write interface configuration to w5100 (ip, netmask, gateway, hwaddr)
 	w5100_mem_write_P(W5100_COMMON_REG, W5100_GAR0, w5100_config, sizeof(w5100_config_t));
+	// less retry
+	w5100_mem_write(W5100_COMMON_REG, W5100_RCR, W5100_TCP_RETRY_COUNT);
 }
 
 void w5100_cs()
