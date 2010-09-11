@@ -352,9 +352,13 @@ int main()
 	log("\n");
 #endif
 
+	uint8_t loop = 0;
 	while (1) {
 		wdt_reset();
 		httpd_loop(cgi_handler);
+		if (++loop == 0) {
+			sock_dump_netstat();
+		}
 	}
 
 	return 0;

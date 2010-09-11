@@ -26,9 +26,49 @@
 
 #include "socket.h"
 #include "w5100.h"
+#include "debug.h"
 
 uint8_t allocated_socks = 0x00;
 uint8_t tcp_source_port = 0x00;
+
+#ifdef DEBUG
+void sock_dump_netstat()
+{
+	uint8_t n;
+	log("sock_dump_netstat():\n");
+	log("## SOFT_STAT SR IR SOURCE->DEST\n");
+	for (n = 0; n < 4; n++) {
+		uint8_t sockreg = W5100_SOCKET_REG + n;
+		log_uint8(n);
+		log(" ");
+		if (allocated_socks & _BV(n)) {
+			log("ALLOCATED ");
+		} else {
+			log("     FREE ");
+		}
+		log_uint8(w5100_mem_read(sockreg, W5100_Sn_SR));
+		log(" ");
+		log_uint8(w5100_mem_read(sockreg, W5100_Sn_IR));
+		log(" 0x");
+		log_uint8(w5100_mem_read(sockreg, W5100_Sn_PORT0));
+		log_uint8(w5100_mem_read(sockreg, W5100_Sn_PORT1));
+		log("->");
+		log_int(w5100_mem_read(sockreg, W5100_Sn_DIPR0), 1, 10);
+		log(".");
+		log_int(w5100_mem_read(sockreg, W5100_Sn_DIPR1), 1, 10);
+		log(".");
+		log_int(w5100_mem_read(sockreg, W5100_Sn_DIPR2), 1, 10);
+		log(".");
+		log_int(w5100_mem_read(sockreg, W5100_Sn_DIPR3), 1, 10);
+		log(":0x");
+		log_uint8(w5100_mem_read(sockreg, W5100_Sn_DPORT0));
+		log_uint8(w5100_mem_read(sockreg, W5100_Sn_DPORT1));
+		log("\n");
+	}
+}
+#else
+void sock_dump_netstat();
+#endif
 
 #ifndef SOCK_NO_SERVER
 void _sock_cleanup_discon(uint8_t listenfd)
@@ -38,7 +78,7 @@ void _sock_cleanup_discon(uint8_t listenfd)
 		if (listenfd & _BV(n)) {
 			uint8_t sockreg = W5100_SOCKET_REG + n;
 			uint8_t sockint = w5100_mem_read(sockreg, W5100_Sn_IR);
-			if (sockint & _BV(W5100_Sn_IR_DISCON)) {
+			if (sockint & _BV(W5100_Sn_IR_DISCON) || sockint & _BV(W5100_Sn_IR_TIMEOUT)) {
 				// listening sockets don't auto return to LISTEN,
 				// need to force the state transition 
 				w5100_mem_write(sockreg, W5100_Sn_IR, _BV(W5100_Sn_IR_DISCON));

@@ -57,3 +57,4 @@ uint8_t sock_write_P(uint8_t sockfd, PGM_P data, uint8_t len);
 uint8_t sock_read(uint8_t sockfd, char *buffer, uint8_t len);
 void sock_close(uint8_t sockfd);
 uint8_t sock_select(uint8_t readsockfds, uint8_t timeout);
+void sock_dump_netstat();
