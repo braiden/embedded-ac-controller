@@ -35,7 +35,7 @@
 #endif
 
 #ifndef HTTPD_MAX_CLIENTS
-#define HTTPD_MAX_CLIENTS 3
+#define HTTPD_MAX_CLIENTS 4
 #endif
 
 #define HTTPD_GET 1
