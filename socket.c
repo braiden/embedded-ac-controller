@@ -265,6 +265,8 @@ void sock_close(uint8_t sockfd)
 		// drain any unread data
 		w5100_drain(sockfd);
 		// mark the socket as avalible for use
+		// FIXME, broken, don't return the socket if it
+		//        belongs to a pool used by and active listener
 		allocated_socks &= ~_BV(sockfd);
 	}
 }
