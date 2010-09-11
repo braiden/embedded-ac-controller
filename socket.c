@@ -36,7 +36,7 @@ void sock_dump_netstat()
 {
 	uint8_t n;
 	log("sock_dump_netstat():\n");
-	log("## SOFT_STAT SR IR SOURCE->DEST\n");
+	log("## SOFT_STAT SR IR MR SOURCE->DEST\n");
 	for (n = 0; n < 4; n++) {
 		uint8_t sockreg = W5100_SOCKET_REG + n;
 		log_uint8(n);
@@ -49,6 +49,8 @@ void sock_dump_netstat()
 		log_uint8(w5100_mem_read(sockreg, W5100_Sn_SR));
 		log(" ");
 		log_uint8(w5100_mem_read(sockreg, W5100_Sn_IR));
+		log(" ");
+		log_uint8(w5100_mem_read(sockreg, W5100_Sn_MR));
 		log(" 0x");
 		log_uint8(w5100_mem_read(sockreg, W5100_Sn_PORT0));
 		log_uint8(w5100_mem_read(sockreg, W5100_Sn_PORT1));
@@ -78,10 +80,14 @@ void _sock_cleanup_discon(uint8_t listenfd)
 		if (listenfd & _BV(n)) {
 			uint8_t sockreg = W5100_SOCKET_REG + n;
 			uint8_t sockint = w5100_mem_read(sockreg, W5100_Sn_IR);
-			if (sockint & _BV(W5100_Sn_IR_DISCON) || sockint & _BV(W5100_Sn_IR_TIMEOUT)) {
+			if (sockint & _BV(W5100_Sn_IR_DISCON)) {
 				// listening sockets don't auto return to LISTEN,
 				// need to force the state transition 
 				w5100_mem_write(sockreg, W5100_Sn_IR, _BV(W5100_Sn_IR_DISCON));
+				w5100_mem_write(sockreg, W5100_Sn_CR, W5100_LISTEN);
+			} else if (sockint & _BV(W5100_Sn_IR_TIMEOUT)) {
+				// if the socket timed out, it will be in discon, put back into listen
+				w5100_mem_write(sockreg, W5100_Sn_IR, _BV(W5100_Sn_IR_TIMEOUT));
 				w5100_mem_write(sockreg, W5100_Sn_CR, W5100_LISTEN);
 			}
 		}
