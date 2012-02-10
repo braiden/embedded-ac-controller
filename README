@@ -1,0 +1,10 @@
+http://braiden.org/?p=74
+
+This project includes hardware (eagle and gerber files), as well as source code
+for an embedded webserver used to control my air conditioner via IR commands.
+
+The hardware is an ATmega32p connected to a WIZ810MJ.
+
+Parts: http://www.mouser.com/ProjectManager/ProjectDetail.aspx?AccessID=8c0f0b4605
+PCB: http://batchpcb.com/index.php/Products/36530
+WIZ810MJ: http://www.saelig.com/product/ETH027.htm
